@@ -18,7 +18,11 @@ const Register = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    dispatch(registerSuccess({ user: { username: form.username, email: form.email }, token: 'demo-token' }));
+    if (!form.username.trim()) {
+      toast.error('Foydalanuvchi nomini kiriting');
+      return;
+    }
+    dispatch(registerSuccess({ user: { username: form.username.trim(), email: form.email.trim() }, token: 'demo-token' }));
     toast.success('Hisob yaratildi');
     navigate('/', { replace: true });
   };

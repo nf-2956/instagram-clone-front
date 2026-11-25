@@ -6,6 +6,7 @@ import {
   PURGE,
   REGISTER,
   REHYDRATE,
+  createMigrate,
   persistReducer,
   persistStore,
 } from 'redux-persist';
@@ -14,8 +15,12 @@ import authReducer from './authSlice';
 
 const persistConfig = {
   key: 'instagram-clone',
+  version: 1,
+  migrate: createMigrate({
+    // Clear accounts and sessions saved before the account reset.
+    1: () => undefined,
+  }),
   storage,
-  whitelist: ['auth'],
 };
 
 export const store = configureStore({
