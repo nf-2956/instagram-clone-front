@@ -12,10 +12,10 @@ import {
 import storage from 'redux-persist/lib/storage';
 import authReducer from './authSlice';
 
+// Persists the whole auth slice (user, token, isAuthenticated)
 const persistConfig = {
   key: 'instagram-clone',
   storage,
-  whitelist: ['auth'],
 };
 
 export const store = configureStore({
