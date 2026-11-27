@@ -7,6 +7,7 @@ import Login from '../pages/Login';
 import Notification from '../pages/Notification';
 import Post from '../pages/Post';
 import Profile from '../pages/Profile';
+import MyProfile from '../pages/MyProfile';
 import Reels from '../pages/Reels';
 import Register from '../pages/Register';
 import Search from '../pages/Search';
@@ -30,7 +31,7 @@ const AppRoutes = () => (
         <Route path="/search" element={<Search />} />
         <Route path="/notifications" element={<Notification />} />
         <Route path="/post" element={<Post />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<MyProfile />} />
         <Route path="/profile/:username" element={<Profile />} />
       </Route>
     </Route>
