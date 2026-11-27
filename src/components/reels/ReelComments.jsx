@@ -1,4 +1,5 @@
 import { FiX } from 'react-icons/fi';
+import { imageUrl } from '../../api/client';
 
 const ReelComments = ({ open, comments, commentText, onCommentTextChange, onSubmit, submitting, onClose }) => {
   if (!open) return null;
@@ -26,12 +27,14 @@ const ReelComments = ({ open, comments, commentText, onCommentTextChange, onSubm
               <li key={comment._id} className="flex gap-2.5">
                 <span
                   aria-hidden="true"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/15 text-xs font-bold text-white"
                 >
-                  {(comment.userId || '?').charAt(0).toUpperCase()}
+                  {comment.author?.avatar
+                    ? <img src={imageUrl(comment.author.avatar)} alt="" className="h-full w-full object-cover" />
+                    : (comment.author?.username || '?').charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-white">{comment.userId}</p>
+                  <p className="truncate text-xs font-semibold text-white">{comment.author?.username}</p>
                   <p className="break-words text-sm text-white/85">{comment.text}</p>
                 </div>
               </li>
@@ -46,7 +49,7 @@ const ReelComments = ({ open, comments, commentText, onCommentTextChange, onSubm
           value={commentText}
           onChange={(event) => onCommentTextChange(event.target.value)}
           placeholder="Izoh yozing..."
-          maxLength={500}
+          maxLength={1000}
           className="min-w-0 flex-1 rounded-full bg-white/10 px-4 py-2 text-sm text-white placeholder:text-white/40 outline-none ring-white/30 focus:ring-1"
         />
         <button

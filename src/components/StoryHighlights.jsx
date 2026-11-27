@@ -6,7 +6,9 @@ import ArchivedStoryImage from './ArchivedStoryImage';
 const endpoint = '/stories/highlights';
 const formatDate = new Intl.DateTimeFormat('uz-UZ', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function StoryHighlights() {
+// Without "username" - own highlights (can add / delete); with it - another user's, read only
+export default function StoryHighlights({ username }) {
+  const readOnly = Boolean(username);
   const dialog = useRef(null);
   const [highlights, setHighlights] = useState([]);
   const [loadError, setLoadError] = useState('');
@@ -21,13 +23,26 @@ export default function StoryHighlights() {
 
   useEffect(() => {
     let ignore = false;
-    api.get(endpoint).then(({ highlights }) => {
-      if (!ignore) setHighlights((current) => [...current, ...highlights.filter(
-        (item) => !current.some((saved) => saved._id === item._id),
-      )]);
+    const path = username ? `${endpoint}?username=${encodeURIComponent(username)}` : endpoint;
+    api.get(path).then(({ highlights }) => {
+      if (!ignore) setHighlights(highlights);
     }).catch((error) => { if (!ignore) setLoadError(error.message); });
     return () => { ignore = true; };
-  }, []);
+  }, [username]);
+
+  async function remove(highlight) {
+    setSaving(true);
+    setError('');
+    try {
+      await api.delete(`${endpoint}/${highlight._id}`);
+      setHighlights((current) => current.filter((item) => item._id !== highlight._id));
+      dialog.current.close();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function add() {
     setMode('add');
@@ -72,6 +87,9 @@ export default function StoryHighlights() {
 
   const active = view?.storyIds[index];
 
+  // nothing to show on someone else's profile
+  if (readOnly && highlights.length === 0) return null;
+
   return (
     <section className="profile-highlights" aria-labelledby="highlights-title">
       <h2 id="highlights-title" lang="ru">Актуальное</h2>
@@ -86,12 +104,12 @@ export default function StoryHighlights() {
             </button>
           </li>
         ))}
-        <li>
+        {!readOnly && <li>
           <button type="button" className="highlight-button" onClick={add} lang="ru">
             <span className="highlight-circle"><FiPlus aria-hidden="true" /></span>
             <span className="highlight-label">Добавить</span>
           </button>
-        </li>
+        </li>}
       </ul>
       {loadError && <p className="error" role="alert">{loadError}</p>}
       <dialog ref={dialog} aria-labelledby="highlight-dialog-title"
@@ -137,6 +155,11 @@ export default function StoryHighlights() {
             )}
           </div>
         ) : <p>Bu Highlightdagi storylar mavjud emas.</p>}
+        {mode === 'view' && view && !readOnly && (
+          <button type="button" className="btn btn-sm btn-ghost text-error" disabled={saving} onClick={() => remove(view)}>
+            Highlightni o‘chirish
+          </button>
+        )}
       </dialog>
     </section>
   );

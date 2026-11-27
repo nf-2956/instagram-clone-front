@@ -25,9 +25,9 @@ const ActionButton = ({
     onClick={onClick}
     className={`group flex flex-col items-center gap-1 transition active:scale-90 ${
       highlight
-        ? 'text-[#ff3040]'
+        ? 'text-error'
         : activeAccent
-          ? 'text-[#00c853]'
+          ? 'text-success'
           : 'text-white hover:text-white/75'
     }`}
   >
@@ -45,12 +45,14 @@ const ActionButton = ({
         />
       )}
     </span>
-    <span className="text-[12px] font-semibold tabular-nums leading-none">{formatCount(count)}</span>
+    {count !== undefined && (
+      <span className="text-[12px] font-semibold tabular-nums leading-none">{formatCount(count)}</span>
+    )}
   </button>
 );
 
 const ReelActions = ({
-  reel,
+  counts,
   liked,
   saved,
   reposted,
@@ -60,14 +62,21 @@ const ReelActions = ({
   onToggleRepost,
   onToggleComments,
 }) => {
-  const showNotice = (message) => toast.info(message);
+  const share = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/reels`);
+      toast.info('Havola nusxalandi');
+    } catch {
+      toast.error("Havolani nusxalab bo'lmadi");
+    }
+  };
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-[18px] pb-1">
       <ActionButton
         icon={FiHeart}
         label={liked ? 'Yoqdi bekor qilish' : 'Yoqdi'}
-        count={reel.likes}
+        count={counts.likes}
         filled={liked}
         highlight={liked}
         pressed={liked}
@@ -77,7 +86,7 @@ const ReelActions = ({
       <ActionButton
         icon={FiMessageCircle}
         label="Izohlar"
-        count={reel.comments}
+        count={counts.comments}
         filled={commentsOpen}
         pressed={commentsOpen}
         onClick={onToggleComments}
@@ -85,7 +94,7 @@ const ReelActions = ({
       <ActionButton
         icon={FiRepeat}
         label={reposted ? 'Repostni bekor qilish' : 'Repost'}
-        count={reel.reposts}
+        count={counts.reposts}
         filled={reposted}
         activeAccent={reposted}
         pressed={reposted}
@@ -95,13 +104,12 @@ const ReelActions = ({
       <ActionButton
         icon={FiSend}
         label="Ulashish"
-        count={reel.shares}
-        onClick={() => showNotice('Ulashish demo rejimda mavjud emas')}
+        onClick={share}
       />
       <ActionButton
         icon={FiBookmark}
         label={saved ? 'Saqlanganlardan olib tashlash' : 'Saqlash'}
-        count={reel.saves}
+        count={counts.saves}
         filled={saved}
         pressed={saved}
         iconClassName={saved ? 'like-pop' : ''}

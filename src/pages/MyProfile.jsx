@@ -111,7 +111,7 @@ export default function Profile() {
         onClick={() => dispatch(logout())}>Hisobdan chiqish</button>
       {!data && !loadError && <p role="status" className="mt-5">Postlar yuklanmoqda…</p>}
       <StoryHighlights />
-      {data && <ProfileMedia posts={data.posts} />}
+      {data && <ProfileMedia posts={data.posts} username={user.username} />}
     </section>
   );
 }

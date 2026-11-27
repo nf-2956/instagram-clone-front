@@ -1,98 +1,105 @@
-import { FiArrowLeft } from 'react-icons/fi';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { reelsData } from '../constants/reelsData';
+import { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { Navigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import AccountAvatar from '../components/AccountAvatar';
+import FollowLists from '../components/FollowLists';
+import ProfileMedia from '../components/ProfileMedia';
+import StoryHighlights from '../components/StoryHighlights';
+import { api } from '../api/client';
+import './account.css';
 
-const formatCount = (value) =>
-  value >= 1000 ? `${(value / 1000).toFixed(1).replace('.0', '')}K` : `${value}`;
-
-const Profile = () => {
+// Another user's profile: /profile/:username
+export default function Profile() {
   const { username } = useParams();
-  const navigate = useNavigate();
+  const me = useSelector((state) => state.auth.user);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
+  const [followBusy, setFollowBusy] = useState(false);
+  const isMe = username?.toLowerCase() === me?.username?.toLowerCase();
 
-  const reel = username ? reelsData.find((item) => item.username === username) : null;
-  const displayName = reel?.username ?? username ?? 'Sizning profilingiz';
-  const initial = displayName.charAt(0).toUpperCase();
-  const avatar = reel?.avatar ?? ['#a78bfa', '#f472b6'];
+  useEffect(() => {
+    if (isMe) return undefined;
+    let ignore = false;
+    setData(null);
+    setError('');
+    const path = `/user/${encodeURIComponent(username)}`;
+    Promise.all([api.get(path), api.get(`${path}/posts`)])
+      .then(([header, feed]) => { if (!ignore) setData({ profile: header.user, posts: feed.posts }); })
+      .catch((err) => { if (!ignore) setError(err.message); });
+    return () => { ignore = true; };
+  }, [username, isMe, reload]);
 
-  const userReels = username ? reelsData.filter((item) => item.username === username) : [];
-  const totalLikes = userReels.reduce((sum, item) => sum + item.likes, 0);
-  const totalSaves = userReels.reduce((sum, item) => sum + item.saves, 0);
+  // Own profile lives on /profile
+  if (isMe) return <Navigate to="/profile" replace />;
+
+  async function toggleFollow() {
+    if (followBusy) return;
+    setFollowBusy(true);
+    try {
+      const result = await api.post(`/user/${data.profile._id}/follow`);
+      setData((current) => ({ ...current, profile: { ...current.profile, ...result } }));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setFollowBusy(false);
+    }
+  }
+
+  if (error) {
+    return (
+      <section className="account-page dashboard-profile">
+        <p className="error" role="alert">{error}{' '}
+          <button type="button" className="btn btn-xs" onClick={() => setReload((value) => value + 1)}>Qayta urinish</button>
+        </p>
+      </section>
+    );
+  }
+
+  if (!data) {
+    return (
+      <section className="account-page dashboard-profile" aria-busy="true">
+        <div className="flex items-center gap-4">
+          <div className="skeleton h-20 w-20 shrink-0 rounded-full" />
+          <div className="space-y-2"><div className="skeleton h-5 w-40" /><div className="skeleton h-4 w-24" /></div>
+        </div>
+        <div className="skeleton mt-6 h-16 w-full" />
+      </section>
+    );
+  }
+
+  const { profile, posts } = data;
+  const displayName = profile.fullName || profile.username;
 
   return (
-    <div className="mx-auto min-h-[100dvh] w-full max-w-2xl px-4 pb-10 pt-4 text-white">
-      <div className="mb-6 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          aria-label="Orqaga"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 active:scale-95"
-        >
-          <FiArrowLeft size={18} />
-        </button>
-        <h1 className="text-lg font-semibold">{displayName}</h1>
-      </div>
-
-      <div className="flex items-center gap-5">
-        <span
-          aria-hidden="true"
-          className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-2xl font-bold text-white ring-2 ring-white/60"
-          style={{ background: `linear-gradient(135deg, ${avatar[0]}, ${avatar[1]})` }}
-        >
-          {initial}
-        </span>
-        <div className="flex gap-6 text-center">
-          <div>
-            <p className="text-lg font-semibold">{userReels.length}</p>
-            <p className="text-sm text-white/60">Reels</p>
-          </div>
-          <div>
-            <p className="text-lg font-semibold">{formatCount(totalLikes)}</p>
-            <p className="text-sm text-white/60">Likes</p>
-          </div>
-          <div>
-            <p className="text-lg font-semibold">{formatCount(totalSaves)}</p>
-            <p className="text-sm text-white/60">Saves</p>
-          </div>
+    <section className="account-page dashboard-profile" aria-labelledby="profile-title">
+      <div className="dashboard-user">
+        <div className="profile-avatar-area">
+          {profile.note && <span className="profile-note-bubble"><span>{profile.note.text}</span></span>}
+          <AccountAvatar user={profile} />
+        </div>
+        <div>
+          <h1 id="profile-title">{displayName}</h1>
+          <p>@{profile.username}</p>
         </div>
       </div>
-
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-white/70">
-          {reel ? `@${reel.username}` : 'Hali ma’lumot yo‘q'}
-        </p>
+      {profile.bio && <p className="profile-bio">{profile.bio}</p>}
+      <FollowLists key={`${profile.username}-${profile.followersCount}`} profile={profile} />
+      <div className="profile-tools">
         <button
           type="button"
-          className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-black transition hover:bg-white/90 active:scale-95"
+          onClick={toggleFollow}
+          disabled={followBusy}
+          aria-pressed={profile.isFollowing}
+          className={`btn btn-sm ${profile.isFollowing ? 'btn-outline' : 'btn-primary'}`}
         >
-          Follow
+          {followBusy && <span className="loading loading-spinner loading-xs" />}
+          {profile.isFollowing ? 'Kuzatilmoqda' : 'Kuzatish'}
         </button>
       </div>
-
-      {reel && (
-        <p className="mt-3 text-sm leading-snug text-white/80">
-          {reel.caption}
-        </p>
-      )}
-
-      <div className="mt-6 grid grid-cols-3 gap-1.5">
-        {userReels.map((item) => (
-          <Link
-            key={item.id}
-            to="/reels"
-            className="aspect-[9/14] rounded-lg transition hover:opacity-80"
-            style={{ background: `linear-gradient(135deg, ${item.media[0]}, ${item.media[1]})` }}
-            aria-label={`${item.username} reels`}
-          />
-        ))}
-      </div>
-
-      {username && userReels.length === 0 && (
-        <p className="mt-6 text-center text-sm text-white/50">
-          Bu foydalanuvchining hali reellari yo‘q.
-        </p>
-      )}
-    </div>
+      <StoryHighlights username={profile.username} />
+      <ProfileMedia posts={posts} username={profile.username} isMe={false} />
+    </section>
   );
-};
-
-export default Profile;
+}

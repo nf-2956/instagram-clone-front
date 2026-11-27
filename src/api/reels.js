@@ -1,44 +1,22 @@
-const API_URL = 'http://localhost:8000';
+import { api, API_URL } from './client';
 
-const request = async (path, options = {}) => {
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.message || 'So‘rov bajarilmadi');
-  }
-  return data;
+// All reel requests go through the shared api client (token is added there)
+export const getReels = (page = 1, limit = 5) => api.get(`/reels?page=${page}&limit=${limit}`);
+export const getUserReels = (username, type = 'own') =>
+  api.get(`/reels/user/${encodeURIComponent(username)}?type=${type}`);
+export const createReel = (file, caption) => {
+  const form = new FormData();
+  form.append('video', file);
+  form.append('caption', caption);
+  return api.post('/reels', form);
 };
+export const deleteReel = (id) => api.delete(`/reels/${id}`);
+export const toggleLike = (id) => api.post(`/reels/${id}/like`);
+export const toggleSave = (id) => api.post(`/reels/${id}/save`);
+export const toggleRepost = (id) => api.post(`/reels/${id}/repost`);
+export const getComments = (id) => api.get(`/reels/${id}/comments`);
+export const addComment = (id, text) => api.post(`/reels/${id}/comments`, { text });
+export const toggleFollow = (userId) => api.post(`/user/${userId}/follow`);
 
-export const getReelState = (reelId, userId) =>
-  request(`/reel/${encodeURIComponent(reelId)}?userId=${encodeURIComponent(userId || '')}`);
-
-export const toggleLike = (reelId, userId) =>
-  request(`/reel/${encodeURIComponent(reelId)}/like`, {
-    method: 'POST',
-    body: JSON.stringify({ userId }),
-  });
-
-export const toggleRepost = (reelId, userId) =>
-  request(`/reel/${encodeURIComponent(reelId)}/repost`, {
-    method: 'POST',
-    body: JSON.stringify({ userId }),
-  });
-
-export const toggleSave = (reelId, userId) =>
-  request(`/reel/${encodeURIComponent(reelId)}/save`, {
-    method: 'POST',
-    body: JSON.stringify({ userId }),
-  });
-
-export const addComment = (reelId, userId, text) =>
-  request(`/reel/${encodeURIComponent(reelId)}/comments`, {
-    method: 'POST',
-    body: JSON.stringify({ userId, text }),
-  });
-
-export const getComments = (reelId) =>
-  request(`/reel/${encodeURIComponent(reelId)}/comments`);
+// "/reels/<id>/video" -> full URL for <video src>
+export const videoUrl = (reel) => `${API_URL}${reel.videoUrl}`;

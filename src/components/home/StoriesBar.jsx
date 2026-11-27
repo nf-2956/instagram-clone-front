@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiX } from 'react-icons/fi';
 import { api, imageUrl } from '../../api/client';
+import StoryUpload from './StoryUpload';
 
 const sameId = (a, b) => String(a) === String(b);
 
@@ -11,6 +12,7 @@ const StoriesBar = ({ groups, currentUser, onChange }) => {
   const [activeGroup, setActiveGroup] = useState(null);
   const [storyIndex, setStoryIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [progressKey, setProgressKey] = useState(0);
   const group = activeGroup === null ? null : groups.find((item) => sameId(item.user._id, activeGroup));
@@ -86,18 +88,8 @@ const StoriesBar = ({ groups, currentUser, onChange }) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) return toast.error('Faqat rasm tanlang');
     if (file.size > 5 * 1024 * 1024) return toast.error('Rasm 5 MB dan oshmasin');
-    const form = new FormData();
-    form.append('image', file);
-    setUploading(true);
-    try {
-      await api.post('/stories', form);
-      toast.success('Istoriya qo‘shildi');
-      await onChange();
-    } catch (error) {
-      toast.error(error.message);
-    } finally {
-      setUploading(false);
-    }
+    // preview + "add to highlights" choice happens in StoryUpload
+    setPendingFile(file);
   };
 
   const deleteStory = async () => {
@@ -142,6 +134,19 @@ const StoriesBar = ({ groups, currentUser, onChange }) => {
           </button>
         ))}
       </div>
+
+      {pendingFile && (
+        <StoryUpload
+          file={pendingFile}
+          onClose={() => setPendingFile(null)}
+          onDone={async () => {
+            setPendingFile(null);
+            setUploading(true);
+            await onChange();
+            setUploading(false);
+          }}
+        />
+      )}
 
       {story && (
         <div role="dialog" aria-modal="true" aria-label={`${group.user.username} istoriyasi`} className="fixed inset-0 z-50 flex items-center justify-center overscroll-contain bg-black/95 sm:px-2 sm:py-4">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FiMusic } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { imageUrl } from '../../api/client';
 
 const CAPTION_LIMIT = 90;
 const MARQUEE_LIMIT = 28;
@@ -12,31 +13,27 @@ const renderCaption = (caption, expanded) => {
   return caption;
 };
 
-const ReelInfo = ({ reel, following, onToggleFollow }) => {
+const ReelInfo = ({ reel, following, followBusy, onToggleFollow }) => {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 
-  const initial = reel.username.charAt(0).toUpperCase();
-  const hasMore = reel.caption.length > CAPTION_LIMIT;
-  const animateAudio = reel.audio.length > MARQUEE_LIMIT;
+  const { username, avatar } = reel.author;
+  const caption = reel.caption || '';
+  const audio = `${username} · Original audio`;
+  const hasMore = caption.length > CAPTION_LIMIT;
+  const animateAudio = audio.length > MARQUEE_LIMIT;
 
-  const openProfile = () => navigate(`/profile/${encodeURIComponent(reel.username)}`);
+  const openProfile = () => navigate(`/profile/${encodeURIComponent(username)}`);
 
   return (
     <div className="min-w-0 flex-1 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]">
       <div className="flex items-center gap-2.5">
-        <button
-          type="button"
-          onClick={openProfile}
-          aria-label={`${reel.username} profilini ochish`}
-          className="shrink-0"
-        >
+        <button type="button" onClick={openProfile} aria-label={`${username} profilini ochish`} className="shrink-0">
           <span
             aria-hidden="true"
-            className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white/80 text-sm font-bold text-white"
-            style={{ background: `linear-gradient(135deg, ${reel.avatar[0]}, ${reel.avatar[1]})` }}
+            className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 border-white/80 bg-white/20 text-sm font-bold text-white"
           >
-            {initial}
+            {avatar ? <img src={imageUrl(avatar)} alt="" className="h-full w-full object-cover" /> : username.charAt(0).toUpperCase()}
           </span>
         </button>
         <button
@@ -44,32 +41,32 @@ const ReelInfo = ({ reel, following, onToggleFollow }) => {
           onClick={openProfile}
           className="truncate text-[15px] font-semibold leading-none transition hover:underline"
         >
-          {reel.username}
+          {username}
         </button>
-        <span className="text-white/40" aria-hidden="true">
-          •
-        </span>
-        <button
-          type="button"
-          onClick={onToggleFollow}
-          className={`shrink-0 rounded-md px-2.5 py-1 text-[13px] font-semibold transition ${
-            following
-              ? 'bg-white/15 text-white hover:bg-white/25'
-              : 'text-[#4cb5f9] hover:text-white'
-          }`}
-        >
-          {following ? 'Following' : 'Follow'}
-        </button>
+        {!reel.isMine && (
+          <>
+            <span className="text-white/40" aria-hidden="true">
+              •
+            </span>
+            <button
+              type="button"
+              onClick={onToggleFollow}
+              disabled={followBusy}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-[13px] font-semibold transition disabled:opacity-60 ${
+                following ? 'bg-white/15 text-white hover:bg-white/25' : 'text-info hover:text-white'
+              }`}
+            >
+              {following ? 'Kuzatilmoqda' : 'Kuzatish'}
+            </button>
+          </>
+        )}
       </div>
 
-      <p
-        className={`mt-2.5 max-w-[320px] text-[14px] leading-[1.35] text-white ${
-          expanded ? '' : 'line-clamp-2'
-        }`}
-      >
-        <span className="font-semibold">{reel.username}</span>{' '}
-        {renderCaption(reel.caption, expanded)}
-      </p>
+      {caption && (
+        <p className={`mt-2.5 max-w-[320px] text-[14px] leading-[1.35] text-white ${expanded ? '' : 'line-clamp-2'}`}>
+          <span className="font-semibold">{username}</span> {renderCaption(caption, expanded)}
+        </p>
+      )}
       {hasMore && (
         <button
           type="button"
@@ -90,11 +87,11 @@ const ReelInfo = ({ reel, following, onToggleFollow }) => {
         <div className="min-w-0 overflow-hidden">
           {animateAudio ? (
             <div className="flex w-max reel-marquee">
-              <span className="pr-8">{reel.audio}</span>
-              <span className="pr-8">{reel.audio}</span>
+              <span className="pr-8">{audio}</span>
+              <span className="pr-8">{audio}</span>
             </div>
           ) : (
-            <span className="block truncate">{reel.audio}</span>
+            <span className="block truncate">{audio}</span>
           )}
         </div>
       </div>

@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { FiCheckCircle, FiHeart, FiRepeat } from 'react-icons/fi';
-import { useSelector } from 'react-redux';
+import { FiCheckCircle, FiHeart, FiRepeat, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
-import { addComment, getComments, getReelState, toggleLike, toggleRepost, toggleSave } from '../../api/reels';
+import {
+  addComment,
+  getComments,
+  toggleFollow,
+  toggleLike,
+  toggleRepost,
+  toggleSave,
+  videoUrl,
+} from '../../api/reels';
 import ReelActions from './ReelActions';
 import ReelComments from './ReelComments';
 import ReelInfo from './ReelInfo';
@@ -10,26 +17,40 @@ import ReelInfo from './ReelInfo';
 const BURST_DURATION = 950;
 const REPOST_BADGE_DURATION = 1600;
 
-const ReelCard = ({ reel }) => {
-  const user = useSelector((state) => state.auth.user);
-  const userId = user?.email || user?.username || '';
+// Optimistic toggle: change the UI first, then confirm with the server or roll back
+const useToggle = (initialActive, initialCount) => {
+  const [state, setState] = useState({ active: initialActive, count: initialCount });
+  const run = async (request, flagKey, countKey) => {
+    const previous = state;
+    setState({ active: !previous.active, count: previous.count + (previous.active ? -1 : 1) });
+    try {
+      const result = await request();
+      setState({ active: result[flagKey], count: result[countKey] });
+      return result;
+    } catch (error) {
+      setState(previous);
+      throw error;
+    }
+  };
+  return [state, run];
+};
 
-  const [liked, setLiked] = useState(false);
-  const [reposted, setReposted] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [following, setFollowing] = useState(false);
-  const [likes, setLikes] = useState(reel.likes);
-  const [reposts, setReposts] = useState(reel.reposts);
-  const [saves, setSaves] = useState(reel.saves);
-  const [comments, setComments] = useState(reel.comments);
+const ReelCard = ({ reel, muted, onToggleMute, onFollowChange }) => {
+  const [like, runLike] = useToggle(reel.isLiked, reel.likesCount);
+  const [save, runSave] = useToggle(reel.isSaved, reel.savesCount);
+  const [repost, runRepost] = useToggle(reel.isReposted, reel.repostsCount);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(reel.commentsCount);
   const [commentList, setCommentList] = useState([]);
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [burstId, setBurstId] = useState(0);
   const [repostFlash, setRepostFlash] = useState(false);
+  const [paused, setPaused] = useState(false);
   const burstTimer = useRef(null);
   const repostTimer = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(
     () => () => {
@@ -39,111 +60,102 @@ const ReelCard = ({ reel }) => {
     [],
   );
 
+  // Play only the reel that is on screen
   useEffect(() => {
-    let cancelled = false;
+    const video = videoRef.current;
+    if (!video) return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {});
+          setPaused(false);
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.6 },
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
 
-    const loadState = async () => {
-      try {
-        const state = await getReelState(reel.id, userId);
-        if (cancelled) return;
-        setLiked(Boolean(state.liked));
-        setReposted(Boolean(state.reposted));
-        setSaved(Boolean(state.saved));
-        setLikes(state.likes);
-        setReposts(state.reposts);
-        if (typeof state.saves === 'number') setSaves(state.saves);
-        setComments(state.comments);
-      } catch {
-        // backend ishlamasa mock qiymatlar qoladi
-      }
-    };
-
-    loadState();
-    return () => {
-      cancelled = true;
-    };
-  }, [reel.id, userId]);
+  const togglePlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      video.play().catch(() => {});
+      setPaused(false);
+    } else {
+      video.pause();
+      setPaused(true);
+    }
+  };
 
   const handleLike = useCallback(async () => {
-    const prevLiked = liked;
-    const prevLikes = likes;
-    setLiked(!prevLiked);
-    setLikes(prevLikes + (prevLiked ? -1 : 1));
-    if (!prevLiked) {
+    if (!like.active) {
       setBurstId((current) => current + 1);
       window.clearTimeout(burstTimer.current);
       burstTimer.current = window.setTimeout(() => setBurstId(0), BURST_DURATION);
     }
-
     try {
-      const result = await toggleLike(reel.id, userId);
-      setLiked(result.liked);
-      setLikes(result.likes);
+      await runLike(() => toggleLike(reel._id), 'isLiked', 'likesCount');
     } catch (e) {
-      setLiked(prevLiked);
-      setLikes(prevLikes);
       toast.error(e.message || 'Like saqlanmadi');
     }
-  }, [liked, likes, reel.id, userId]);
+  }, [like.active, reel._id, runLike]);
 
   const handleDoubleTap = () => {
-    if (!liked) handleLike();
+    if (!like.active) handleLike();
   };
 
-  const handleRepost = useCallback(async () => {
-    const prevReposted = reposted;
-    const prevReposts = reposts;
-    setReposted(!prevReposted);
-    setReposts(prevReposts + (prevReposted ? -1 : 1));
-
-    if (!prevReposted) {
+  const handleRepost = async () => {
+    if (!repost.active) {
       setRepostFlash(true);
       window.clearTimeout(repostTimer.current);
       repostTimer.current = window.setTimeout(() => setRepostFlash(false), REPOST_BADGE_DURATION);
     }
-
     try {
-      const result = await toggleRepost(reel.id, userId);
-      setReposted(result.reposted);
-      setReposts(result.reposts);
+      const result = await runRepost(() => toggleRepost(reel._id), 'isReposted', 'repostsCount');
       toast.success(result.message);
     } catch (e) {
-      setReposted(prevReposted);
-      setReposts(prevReposts);
       setRepostFlash(false);
       toast.error(e.message || 'Repost saqlanmadi');
     }
-  }, [reposted, reposts, reel.id, userId]);
+  };
 
-  const handleSave = useCallback(async () => {
-    const prevSaved = saved;
-    const prevSaves = saves;
-    setSaved(!prevSaved);
-    setSaves(prevSaves + (prevSaved ? -1 : 1));
-
+  const handleSave = async () => {
     try {
-      const result = await toggleSave(reel.id, userId);
-      setSaved(result.saved);
-      setSaves(result.saves);
+      const result = await runSave(() => toggleSave(reel._id), 'isSaved', 'savesCount');
       toast.success(result.message);
     } catch (e) {
-      setSaved(prevSaved);
-      setSaves(prevSaves);
       toast.error(e.message || 'Saqlashda xatolik');
     }
-  }, [saved, saves, reel.id, userId]);
+  };
 
-  const toggleComments = useCallback(async () => {
-    setShowComments((value) => !value);
-    if (showComments) return;
-
+  const handleFollow = async () => {
+    if (followBusy) return;
+    setFollowBusy(true);
     try {
-      const result = await getComments(reel.id);
-      setCommentList(result.comments || []);
-    } catch {
-      // kommentlarni olib bo'lmasa bo'sh qoladi
+      const result = await toggleFollow(reel.author._id);
+      onFollowChange?.(reel.author._id, result.isFollowing);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setFollowBusy(false);
     }
-  }, [showComments, reel.id]);
+  };
+
+  const toggleComments = async () => {
+    const opening = !showComments;
+    setShowComments(opening);
+    if (!opening) return;
+    try {
+      const result = await getComments(reel._id);
+      setCommentList(result.comments);
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
 
   const handleCommentSubmit = async (event) => {
     event.preventDefault();
@@ -152,13 +164,12 @@ const ReelCard = ({ reel }) => {
 
     setSubmitting(true);
     try {
-      const result = await addComment(reel.id, userId, text);
+      const result = await addComment(reel._id, text);
       setCommentList((list) => [result.comment, ...list]);
-      setComments(result.comments);
+      setCommentsCount(result.commentsCount);
       setCommentText('');
-      toast.success('Komment qo‘shildi');
     } catch (e) {
-      toast.error(e.message || 'Komment saqlanmadi');
+      toast.error(e.message || 'Izoh saqlanmadi');
     } finally {
       setSubmitting(false);
     }
@@ -166,67 +177,64 @@ const ReelCard = ({ reel }) => {
 
   return (
     <article className="relative h-full w-full max-w-[450px] shrink-0 overflow-hidden bg-black">
-      <div
-        className="absolute inset-0 touch-manipulation select-none"
-        onDoubleClick={handleDoubleTap}
-      >
-        <div className="absolute inset-0 overflow-hidden">
-          <div
-            className="reel-media absolute inset-0 shadow-[inset_0_0_120px_rgba(0,0,0,0.45)]"
-            style={{
-              background: `linear-gradient(160deg, ${reel.media[0]} 0%, ${reel.media[1]} 100%)`,
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-[0.07]"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.35) 0 1px, transparent 1px), radial-gradient(circle at 70% 60%, rgba(255,255,255,0.25) 0 1px, transparent 1px)',
-              backgroundSize: '48px 48px, 32px 32px',
-            }}
-          />
-        </div>
+      <div className="absolute inset-0 touch-manipulation select-none" onDoubleClick={handleDoubleTap}>
+        <video
+          ref={videoRef}
+          src={videoUrl(reel)}
+          className="absolute inset-0 h-full w-full object-cover"
+          loop
+          playsInline
+          muted={muted}
+          preload="metadata"
+          onClick={togglePlay}
+        />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/65 via-black/20 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
 
+        {paused && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-white">Pauza</span>
+          </div>
+        )}
+
         {burstId > 0 && (
-          <div
-            key={burstId}
-            aria-hidden="true"
-            className="reel-burst pointer-events-none absolute left-1/2 top-1/2 z-20"
-          >
+          <div key={burstId} aria-hidden="true" className="reel-burst pointer-events-none absolute left-1/2 top-1/2 z-20">
             <FiHeart size={110} fill="currentColor" className="text-white drop-shadow-[0_4px_18px_rgba(0,0,0,0.45)]" />
           </div>
         )}
       </div>
 
-      {(repostFlash || reposted) && (
+      <button
+        type="button"
+        onClick={onToggleMute}
+        aria-label={muted ? 'Ovozni yoqish' : "Ovozni o'chirish"}
+        className="absolute right-3 top-16 z-20 rounded-full bg-black/45 p-2 text-white transition hover:bg-black/65"
+      >
+        {muted ? <FiVolumeX size={18} /> : <FiVolume2 size={18} />}
+      </button>
+
+      {(repostFlash || repost.active) && (
         <div
           className={`pointer-events-none absolute left-4 top-16 z-20 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold backdrop-blur-md transition-all duration-300 ${
             repostFlash
-              ? 'border-[#00c853]/60 bg-[#00c853]/25 text-[#69f0ae] opacity-100 translate-y-0'
+              ? 'border-success/60 bg-success/25 text-success opacity-100'
               : 'border-white/20 bg-black/45 text-white/90 opacity-100'
           }`}
         >
           <FiRepeat size={13} className={repostFlash ? 'repost-pop' : ''} />
           <span>{repostFlash ? 'Repost qilindi' : 'Repost qilingan'}</span>
-          <FiCheckCircle size={12} className={repostFlash ? 'text-[#69f0ae]' : 'text-[#00c853]'} />
+          <FiCheckCircle size={12} className="text-success" />
         </div>
       )}
 
       <div className="absolute inset-x-0 bottom-0 z-10 flex items-end gap-3 px-4 pb-20 md:pb-6">
-        <ReelInfo
-          reel={reel}
-          following={following}
-          onToggleFollow={() => setFollowing((value) => !value)}
-        />
+        <ReelInfo reel={reel} following={reel.isFollowingAuthor} followBusy={followBusy} onToggleFollow={handleFollow} />
         <ReelActions
-          reel={{ ...reel, likes, reposts, comments, saves }}
-          liked={liked}
-          saved={saved}
-          reposted={reposted}
+          counts={{ likes: like.count, comments: commentsCount, reposts: repost.count, saves: save.count }}
+          liked={like.active}
+          saved={save.active}
+          reposted={repost.active}
           onToggleLike={handleLike}
           onToggleSave={handleSave}
           onToggleRepost={handleRepost}
