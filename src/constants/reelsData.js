@@ -3,7 +3,7 @@ export const reelsData = [
     id: 'reel-1',
     username: 'aziz.dev',
     caption:
-      'Yangi layoutni birinchi marta ko‘rib chiqdik — natija juda chiroyli chiqdi. Jamoa bilan birga ishlash har doim zavqli.',
+      'Yangi layoutni birinchi marta ko‘rib chiqdik — natija juda chiroyli chiqdi. Jamoa bilan birga ishlash har doim zavqli. #webdev #react #uiux #toshkent',
     audio: 'aziz.dev · Original audio',
     likes: 12400,
     comments: 342,
@@ -16,7 +16,8 @@ export const reelsData = [
   {
     id: 'reel-2',
     username: 'dilnoza.art',
-    caption: 'Ranglar bilan o‘ynash — yangi illustration ustida ishlavyapman.',
+    caption:
+      'Ranglar bilan o‘ynash — yangi illustration ustida ishlavyapman. Har bir chiziq o‘z hikoyasini aytadi. #art #illustration #digitalart #creativity',
     audio: 'dilnoza.art · Original audio',
     likes: 8300,
     comments: 217,
@@ -29,7 +30,8 @@ export const reelsData = [
   {
     id: 'reel-3',
     username: 'jamshid.fit',
-    caption: 'Bugungi mashg‘ulot yakunlandi. Har kuni bir qadam oldinga — natija o‘z keladi.',
+    caption:
+      'Bugungi mashg‘ulot yakunlandi. Har kuni bir qadam oldinga — natija o‘z keladi. Kim bugun mashq qildi? 💪 #fitness #gym #motivation #sport',
     audio: 'jamshid.fit · Original audio',
     likes: 21500,
     comments: 598,
@@ -42,7 +44,8 @@ export const reelsData = [
   {
     id: 'reel-4',
     username: 'malika.kitchen',
-    caption: 'Nonushta uchun oddiy va tez retsept — barchaga tavsiya qilaman.',
+    caption:
+      'Nonushta uchun oddiy va tez retsept — barchaga tavsiya qilaman. Ingredientlar ro‘yxati bioda. #food #recipe #cooking #nonushta',
     audio: 'malika.kitchen · Original audio',
     likes: 5600,
     comments: 143,
@@ -55,7 +58,8 @@ export const reelsData = [
   {
     id: 'reel-5',
     username: 'sarvar.travel',
-    caption: 'Tog‘lar ortidagi quyosh — bundan go‘ro narsa yo‘q.',
+    caption:
+      'Tog‘lar ortidagi quyosh — bundan go‘zal narsa yo‘q. Keyingi sayohat kim bilan? ✈️ #travel #mountains #sunset #uzbekistan',
     audio: 'sarvar.travel · Original audio',
     likes: 34200,
     comments: 876,

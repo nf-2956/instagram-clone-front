@@ -12,7 +12,7 @@ const items = [
 const ReelsBottomNav = () => (
   <nav
     aria-label="Asosiy navigatsiya"
-    className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-white/10 bg-black/80 px-2 pb-[env(safe-area-inset-bottom)] pt-2.5 backdrop-blur-md md:hidden"
+    className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-white/10 bg-black px-2 pb-[env(safe-area-inset-bottom)] pt-2.5 md:hidden"
   >
     {items.map(({ label, to, icon: Icon }) => (
       <NavLink
@@ -22,11 +22,11 @@ const ReelsBottomNav = () => (
         aria-label={label}
         className={({ isActive }) =>
           `transition active:scale-90 ${
-            isActive ? 'text-white' : 'text-white/55 hover:text-white/85'
+            isActive ? 'text-white' : 'text-white/50 hover:text-white/85'
           }`
         }
       >
-        <Icon size={24} />
+        {({ isActive }) => <Icon size={23} strokeWidth={isActive ? 2.4 : 1.8} />}
       </NavLink>
     ))}
   </nav>

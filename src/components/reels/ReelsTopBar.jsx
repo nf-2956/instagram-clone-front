@@ -1,4 +1,4 @@
-import { FiPlus } from 'react-icons/fi';
+import { FiCamera, FiPlus } from 'react-icons/fi';
 
 const TABS = [
   { id: 'reels', label: 'Reels' },
@@ -6,33 +6,33 @@ const TABS = [
 ];
 
 const ReelsTopBar = ({ activeTab, onTabChange, onCreate }) => (
-  <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-16 items-center justify-between bg-gradient-to-b from-black/60 via-black/20 to-transparent px-4">
+  <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-14 items-center justify-between bg-gradient-to-b from-black/70 via-black/25 to-transparent px-3">
     <button
       type="button"
       aria-label="Yangi reel yaratish"
       onClick={onCreate}
       className="pointer-events-auto rounded-full p-2 text-white transition hover:bg-white/10 active:scale-90"
     >
-      <FiPlus size={24} />
+      <FiCamera size={22} />
     </button>
 
-    <nav className="pointer-events-auto flex items-center gap-6" aria-label="Reels bo‘limlari">
+    <nav className="pointer-events-auto flex items-center gap-7" aria-label="Reels bo‘limlari">
       {TABS.map(({ id, label }) => (
         <button
           key={id}
           type="button"
           aria-current={activeTab === id ? 'page' : undefined}
           onClick={() => onTabChange(id)}
-          className={`relative pb-1 text-[15px] transition-colors ${
+          className={`relative pb-1 text-[16px] transition-colors ${
             activeTab === id
-              ? 'font-semibold text-white'
-              : 'font-medium text-white/60 hover:text-white'
+              ? 'font-bold text-white'
+              : 'font-medium text-white/55 hover:text-white/85'
           }`}
         >
           {label}
           <span
             aria-hidden="true"
-            className={`absolute inset-x-0 -bottom-0.5 h-0.5 rounded-full bg-white transition-opacity ${
+            className={`absolute inset-x-0 -bottom-0.5 h-[3px] rounded-full bg-white transition-opacity ${
               activeTab === id ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -40,7 +40,14 @@ const ReelsTopBar = ({ activeTab, onTabChange, onCreate }) => (
       ))}
     </nav>
 
-    <span className="w-10" aria-hidden="true" />
+    <button
+      type="button"
+      aria-label="Yangi reel"
+      onClick={onCreate}
+      className="pointer-events-auto rounded-full p-2 text-white transition hover:bg-white/10 active:scale-90"
+    >
+      <FiPlus size={22} />
+    </button>
   </header>
 );
 
